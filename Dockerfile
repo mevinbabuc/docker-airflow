@@ -5,11 +5,15 @@
 # SOURCE: https://github.com/puckel/docker-airflow
 
 FROM python:3.6-slim
-MAINTAINER Puckel_
+MAINTAINER mevinbabuc@gmail.com
 
 # Never prompts the user for choices on installation/configuration of packages
 ENV DEBIAN_FRONTEND noninteractive
 ENV TERM linux
+ENV HOME /root
+ENV APP_HOME /application/
+ENV C_FORCE_ROOT=true
+ENV PYTHONUNBUFFERED 1
 
 # Airflow
 ARG AIRFLOW_VERSION=1.8.2
@@ -35,7 +39,23 @@ RUN set -ex \
         liblapack-dev \
         libpq-dev \
         git \
-    ' \
+        apt-transport-https \
+        ca-certificates \
+        gnupg \
+        imagemagick \
+        libxml2-dev \
+        libxslt1-dev \
+        openssh-client \
+        file \
+        libtiff5-dev \
+        libjpeg-dev \
+        zlib1g-dev \
+        libfreetype6-dev \
+        liblcms2-dev \
+        tcl8.6-dev \
+        tk8.6-dev \
+        python-tk \
+        libncurses5-dev' \
     && apt-get update -yqq \
     && apt-get install -yqq --no-install-recommends \
         $buildDeps \
@@ -49,17 +69,9 @@ RUN set -ex \
     && sed -i 's/^# en_US.UTF-8 UTF-8$/en_US.UTF-8 UTF-8/g' /etc/locale.gen \
     && locale-gen \
     && update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 \
-    && useradd -ms /bin/bash -d ${AIRFLOW_HOME} airflow \
-    && python -m pip install -U pip setuptools wheel \
-    && pip install Cython \
-    && pip install pytz \
-    && pip install pyOpenSSL \
-    && pip install ndg-httpsclient \
-    && pip install pyasn1 \
-    && pip install apache-airflow[crypto,celery,postgres,hive,jdbc]==$AIRFLOW_VERSION \
-    && pip install celery[redis]==3.1.17 \
-    && apt-get purge --auto-remove -yqq $buildDeps \
-    && apt-get clean \
+    && python -m pip install -U pip setuptools wheel
+
+RUN apt-get clean \
     && rm -rf \
         /var/lib/apt/lists/* \
         /tmp/* \
@@ -71,10 +83,11 @@ RUN set -ex \
 COPY script/entrypoint.sh /entrypoint.sh
 COPY config/airflow.cfg ${AIRFLOW_HOME}/airflow.cfg
 
-RUN chown -R airflow: ${AIRFLOW_HOME}
+# Install bundle of gems
+RUN mkdir -p $APP_HOME
+WORKDIR $APP_HOME
 
 EXPOSE 8080 5555 8793
 
-USER airflow
 WORKDIR ${AIRFLOW_HOME}
 ENTRYPOINT ["/entrypoint.sh"]
